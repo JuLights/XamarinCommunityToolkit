@@ -84,14 +84,26 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 		TaskCompletionSource<CameraDevice?>? initTaskSource;
 		TaskCompletionSource<bool>? permissionsRequested;
+		private IAndroidCameraPreviewProcessor cameraPreviewProcessor;
 
 		public CameraFragment()
 		{
+			cameraPreviewProcessor = DependencyService.Get<IAndroidCameraPreviewProcessor>();
 		}
 
 		public CameraFragment(IntPtr javaReference, JniHandleOwnership transfer)
 			: base(javaReference, transfer)
 		{
+		default:
+				case CameraCaptureMode.Photo:
+					cameraTemplate = CameraTemplate.StillCapture;
+					break;
+				case CameraCaptureMode.Video:
+					cameraTemplate = CameraTemplate.Record;
+					break;
+				case CameraCaptureMode.Preview:
+					cameraTemplate = CameraTemplate.Preview;
+					break;
 		}
 
 		bool IsBusy
@@ -332,7 +344,7 @@ namespace Xamarin.CommunityToolkit.UI.Views
 
 		public void TakePhoto()
 		{
-			if (IsBusy || cameraTemplate != CameraTemplate.Preview)
+			if (IsBusy || cameraTemplate != CameraTemplate.StillCapture)
 				return;
 
 			try
@@ -804,8 +816,12 @@ namespace Xamarin.CommunityToolkit.UI.Views
 			return true;
 		}
 
-		void TextureView.ISurfaceTextureListener.OnSurfaceTextureUpdated(SurfaceTexture? surface)
+		async void TextureView.ISurfaceTextureListener.OnSurfaceTextureUpdated(SurfaceTexture? surface)
 		{
+			if (cameraTemplate == CameraTemplate.Preview && cameraPreviewProcessor != null)
+			{
+				await cameraPreviewProcessor.Process(surface);
+			}
 		}
 
 		async Task RequestCameraPermissions()
